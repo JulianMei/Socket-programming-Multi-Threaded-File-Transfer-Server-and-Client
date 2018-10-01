@@ -13,6 +13,8 @@
 #include "gfclient.h"
 #include "gfclient-student.h"
 #include "workload.h"
+#include "pthread.h"
+#include "steque.h"
 
 #define USAGE                                                                 \
 "usage:\n"                                                                    \
@@ -24,6 +26,12 @@
 "  -s [server_addr]    Server address (Default: 127.0.0.1)\n"                   \
 "  -t [nthreads]       Number of threads (Default 32)\n"                       \
 "  -w [workload_path]  Path to workload file (Default: workload.txt)\n"       \
+
+/* Global variables ================================================== */
+steque_t taskQueue;
+steque_t threadPool;
+pthread_mutex_t mutex_tq = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t  tq_nonEmpty = PTHREAD_COND_INITIALIZER;
 
 /* OPTIONS DESCRIPTOR ====================================================== */
 static struct option gLongOptions[] = {
@@ -81,6 +89,58 @@ static void writecb(void* data, size_t data_len, void *arg){
   fwrite(data, 1, data_len, file);
 }
 
+
+/* Download request handler, worker threads starts execution from here */
+void* getFileHandler(void* nrequests)
+{
+	gfcrequest_t* req = NULL;
+
+	// Loop until this handler has processed [nrequests] requests
+  int numReqHandled = 0;
+	while (numReqHandled < (long)nrequests) {
+		pthread_mutex_lock(&mutex_tq);
+
+    // !!! Must have the while check here otherwise queue may underflow !!!
+		while (steque_isempty(&taskQueue)) {
+      pthread_cond_wait(&tq_nonEmpty, &mutex_tq);
+    }
+
+		req = (gfcrequest_t*)steque_pop(&taskQueue);  // Retrieve a task
+		pthread_mutex_unlock(&mutex_tq);
+    
+    if(req) {  
+      // Perform this download request 
+		  gfc_perform(req);
+		  gfc_cleanup(req);
+      req = NULL;
+      numReqHandled++;
+    }
+	}
+
+	pthread_exit(NULL);  // Exit the current thread.
+}
+
+/* Create worker thread pool  =========================================*/
+void createWorkerThreads(int nThreads, long nrequests) {
+	steque_init(&threadPool);
+
+	for (int i = 0; i < nThreads; i++) {
+		pthread_t* tid = (pthread_t*)malloc(sizeof(pthread_t));  // must be freed later 
+		pthread_create(tid, NULL, &getFileHandler, (void *)nrequests);  // should be joinable
+		steque_enqueue(&threadPool, (steque_item)tid);
+    fprintf(stdout, "Created thread %d \n", i);  // DEBUG_PRINT
+	}
+}
+
+/* Join worker threads  ==============================================*/
+void joinWorkerThreads() {
+	while (!steque_isempty(&threadPool)) {
+		pthread_t * tid = (pthread_t *)steque_pop(&threadPool);
+		pthread_join(*tid, NULL);
+    free(tid);  // must free pointer to this tid object
+	}
+}
+
 /* Main ========================================================= */
 int main(int argc, char **argv) {
 /* COMMAND LINE OPTIONS ============================================= */
@@ -90,9 +150,9 @@ int main(int argc, char **argv) {
 
   int i = 0;
   int option_char = 0;
-  int nrequests = 4;
+  long nrequests = 4;
   int nthreads = 32;
-  int returncode = 0;
+  //int returncode = 0;
   gfcrequest_t *gfr = NULL;
   FILE *file = NULL;
   char *req_path = NULL;
@@ -135,6 +195,12 @@ int main(int argc, char **argv) {
 
   gfc_global_init();
 
+  // Initialize task queue
+  steque_init(&taskQueue);
+
+  // Initialized worker thread pool
+  createWorkerThreads(nthreads, nrequests);
+
   /*Making the requests...*/
   for(i = 0; i < nrequests * nthreads; i++){
     req_path = workload_get_path();
@@ -157,29 +223,19 @@ int main(int argc, char **argv) {
 
     fprintf(stdout, "Requesting %s%s\n", server, req_path);
 
-    if ( 0 > (returncode = gfc_perform(gfr))){
-      fprintf(stdout, "gfc_perform returned an error %d\n", returncode);
-      fclose(file);
-      if ( 0 > unlink(local_path))
-        fprintf(stderr, "warning: unlink failed on %s\n", local_path);
-    }
-    else {
-        fclose(file);
-    }
-
-    if ( gfc_get_status(gfr) != GF_OK){
-      if ( 0 > unlink(local_path))
-        fprintf(stderr, "warning: unlink failed on %s\n", local_path);
-    }
-
-    fprintf(stdout, "Status: %s\n", gfc_strstatus(gfc_get_status(gfr)));
-    fprintf(stdout, "Received %zu of %zu bytes\n", gfc_get_bytesreceived(gfr), gfc_get_filelen(gfr));
-
-    gfc_cleanup(gfr);
-
+	  // Enqueue the file download request to the task queue, it's up to the 
+    // worker threads to process the requests and clean up the gfr memory.
+	  pthread_mutex_lock(&mutex_tq);
+	  steque_enqueue(&taskQueue, (steque_item)gfr);  // enqueue request
+	  pthread_mutex_unlock(&mutex_tq);
+    pthread_cond_broadcast(&tq_nonEmpty);  // signal all the workers
   }
+
+  // wait for all the worker threads join before exit
+  joinWorkerThreads();  
 
   gfc_global_cleanup();
 
   return 0;
 }  
+

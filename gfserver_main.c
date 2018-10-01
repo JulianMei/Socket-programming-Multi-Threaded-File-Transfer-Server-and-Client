@@ -34,7 +34,9 @@ static struct option gLongOptions[] = {
   {NULL,            0,                      NULL,             0}
 };
 
-
+/* FUNTION DECLARATIONS ==================================================== */
+extern void initRequestQueue(void);
+extern void createWorkerThreads(int nthreads);  // defined in handler.c
 extern ssize_t gfs_handler(gfcontext_t *ctx, const char *path, void* arg);
 
 static void _sig_handler(int signo){
@@ -84,13 +86,19 @@ int main(int argc, char **argv) {
         break;                                          
     }
   }
-
+  
   /* not useful, but it ensures the initial code builds without warnings */
   if (nthreads < 1) {
     nthreads = 1;
   }
-  
+
   content_init(content_map);
+
+  // Create worker thread pool
+  createWorkerThreads(nthreads);
+
+  // Initialize the request queue
+  initRequestQueue();
 
   /*Initializing server*/
   gfs = gfserver_create();
