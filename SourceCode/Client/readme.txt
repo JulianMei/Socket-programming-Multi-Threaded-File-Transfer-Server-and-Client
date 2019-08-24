@@ -1,1 +1,1 @@
-This file contains source code for get file client. 
+This file contains source code of the get file client and some utilities. 
