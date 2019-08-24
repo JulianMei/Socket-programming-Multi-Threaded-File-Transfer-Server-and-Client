@@ -1,5 +1,5 @@
-# Multi-Threaded File Transfer Server Client Socket Programming
-Designed and implemented a multi-threaded web server that serves static files based on a GetFile protocol. Alongside the server, designed and created a multi-threaded client that acts as a load generator for the server. Both the server and client are written in C and are based on a sound, scalable design. 
+# Socket Programming: Multi-Threaded File Transfer Server Client 
+Designed and implemented a multi-threaded web server that serves static files based on a GetFile protocol. Alongside the server, designed and created a multi-threaded client that acts as a load generator for the server. Both the server and client are written in C and are based on a sound, scalable design. Socket programming libraries and PThread library (for multi-threading) are used.
 
 Getfile Protocol <br />
 Getfile is a simple protocol used to transfer a file from one computer to another that I made up for this project. A typical successful transfer is illustrated below.
