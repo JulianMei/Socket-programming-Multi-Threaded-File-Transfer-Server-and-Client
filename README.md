@@ -9,5 +9,5 @@ Getfile is a simple protocol used to transfer a file from one computer to anothe
 Part 2: Implement a Multithreaded Getfile Server and Client
 In Part 1, the Getfile server can only handle a single request at a time. Similarly on the client side, the Getfile workload generator can only download a single file at a time. To overcome this limitation, I made the Getfile server and client multi-threaded by following a boss-worker thread pattern. The high-level code design is illustrated below.
 
-![alt text](https://github.com/JulianMei/Socket-programming-Multi-Threaded-File-Transfer-Server-and-Client/blob/master/High-_Level_Design.jpg)
+![alt text](https://github.com/JulianMei/Multi-threaded_File_Transfer_Server_Client_Socket_Programming/blob/master/High%20Level%20Design.jpg)
 
