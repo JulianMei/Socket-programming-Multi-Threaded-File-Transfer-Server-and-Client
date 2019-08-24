@@ -5,8 +5,8 @@ Getfile is a simple protocol used to transfer a file from one computer to anothe
 
 ![alt text](https://github.com/JulianMei/Socket-programming-Multi-Threaded-File-Transfer-Server-and-Client/blob/master/gftransfer.png)  <br />
 
-Based on the protocol, designed and implemented the server and client following a boss-worker thread pattern. The design supports concurrent file transfer from server machine to client machine through socket communication. <br />
+Based on the protocol, designed and implemented the server and client following a boss-worker thread pattern. The design supports concurrent file transfer from server machine to client machine through socket communication. <br /><br />
 High level design and code structure is described in the following diagram: 
 
-![alt text](https://github.com/JulianMei/Multi-threaded_File_Transfer_Server_Client_Socket_Programming/blob/master/High%20Level%20Design.jpg)
+![alt text](https://github.com/JulianMei/Multi-threaded_File_Transfer_Server_Client_Socket_Programming/blob/master/High_Level_Design.jpg)
 
